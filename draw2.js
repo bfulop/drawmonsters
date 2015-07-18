@@ -127,7 +127,7 @@ Leg1.update({name:"Leg1", length: 100, width: 20, rotation: -10, parentobj:BodyS
 
 
 var Leg1Joint1 = Object.create(bodypart);
-Leg1Joint1.update({name:"Leg1Joint1", length: 140, width: 15, rotation: 10, parentobj:Leg1});
+Leg1Joint1.update({name:"Leg1Joint1", length: 140, width: 15, rotation: -10, parentobj:Leg1});
 
 var Leg1Joint1Joint1 = Object.create(bodypart);
 Leg1Joint1Joint1.update({name:"Leg1Joint1Joint1", length: 220, width: 10, rotation: 110, parentobj:Leg1Joint1});
@@ -289,7 +289,7 @@ bodypart.twoJointSolver = function (posobj) {
         sidey_target =  sidex_target * anglealpha;
         yborder = sortedpoints[0 ].y - sidey_target;
 
-        var isclockwise = targetpoint.y > yborder;
+        var isclockwise = (slopedir === 1) ? targetpoint.y < yborder : targetpoint.y > yborder;
         console.log( isclockwise );
 
         return isclockwise;
@@ -364,7 +364,7 @@ function drawtarget ( x, y, strokeStyle ) {
 
 };
 
-var firsttargetcoords = {x: 210, y:200};
+var firsttargetcoords = {x: 230, y:200};
 
 drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
 
