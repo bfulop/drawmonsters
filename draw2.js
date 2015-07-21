@@ -171,7 +171,7 @@ bodypart.endJointSolver = function (posobj) {
 bodypart.twoJointSolver = function (posobj) {
 
 //    get rotation direction
-    var clockwise = clockwiseBol(
+    var clockwise = getRotationDir(
          {
              x : this.parentobj.abscoordinates.startx,
              y : this.parentobj.abscoordinates.starty
@@ -182,9 +182,6 @@ bodypart.twoJointSolver = function (posobj) {
          },
         posobj
     );
-
-    console.log( "clockwise?", clockwise );
-
 
 //    getParentRotation
 
@@ -214,10 +211,30 @@ bodypart.twoJointSolver = function (posobj) {
 
     var angle_end_target = getAngleatCorner(dist_parent_target, this.parentobj.length, dist_end_target);
 
-    var targetangle = angle_end_target + angle_parent_target;
+// test different rotations to get the right one
 
-//    if target is behind then
-//    var targetangle = angle_end_target + angle_parent_target;
+    var targetangle, rotation_solutions = [];
+//    Beta - Alpha
+    targetangle =  angle_parent_target - angle_end_target;
+    rotation_solutions.push(testRotation.call(this));
+
+//    Alpha + Beta
+    targetangle =   angle_end_target + angle_parent_target;
+    rotation_solutions.push(testRotation.call(this));
+
+//    Alpha - Beta
+    targetangle =   angle_end_target - angle_parent_target;
+    rotation_solutions.push(testRotation.call(this));
+
+//  get closest solution
+    var good_solutions = rotation_solutions.filter(function(asolution){
+        return asolution.is_solution;
+    });
+    good_solutions.sort(function(a,b){
+        return a - b;
+    });
+    targetangle = good_solutions[0].rotation;
+//    targetangle =  angle_parent_target - angle_end_target;
 
 
 //    getEndPointRotation
@@ -232,6 +249,32 @@ bodypart.twoJointSolver = function (posobj) {
         endrotation      : 180 - angle_endjoint_target,
         endjointrotation : 180 - endjoint_rotation
     });
+
+    function testRotation () {
+        var newendpoint = getNewEndPoints(
+            {
+                x:this.parentobj.abscoordinates.startx,
+                y:this.parentobj.abscoordinates.starty
+            },
+            this.parentobj.length,
+            this.parentobj.abscoordinates.rotation - targetangle
+        );
+
+//    resultdistance (should be equal to this.length)
+        var resultdistance = getDistance(newendpoint, posobj);
+        var isresultok = Math.abs(resultdistance - this.length) < 10;
+        return {is_solution: isresultok, rotation: targetangle};
+
+    }
+
+    function getNewEndPoints (startpos, jointlength, absrotation) {
+        var deltax, deltay, endx, endy;
+        deltax   = jointlength * (Math.sin(absrotation * Math.PI/180));
+        deltay   = jointlength * (Math.cos(absrotation * Math.PI/180));
+        endx     = startpos.x + deltax;
+        endy     = startpos.y + deltay;
+        return {x:endx, y:endy};
+    }
 
     function getDistance (startpos, endpos) {
         var sidex = Math.abs(startpos.x - endpos.x);
@@ -270,27 +313,48 @@ bodypart.twoJointSolver = function (posobj) {
 
     }
 
-    function clockwiseBol (startpoint, endpoint, targetpoint) {
+    function getRotationDir (startpoint, endpoint, targetpoint) {
+        var isclockwise;
 //        1. get a normalised triangle
         var sortedpoints = [startpoint, endpoint ].sort(function(a,b){
 //            largest first
             return b.x - a.x;
         });
 //        2. get the base triangle we're comparing too
-        var sidex, sidey, anglealpha, slopedir;
+        var sidex, sidey, anglealpha, slopedir, centerpoint;
         sidex = sortedpoints[0 ].x - sortedpoints[1 ].x;
         sidey = sortedpoints[0 ].y - sortedpoints[1 ].y;
         anglealpha = sidey / sidex;
         slopedir = (anglealpha > 0) ? -1 : 1;
+        centerpoint = (startpoint.x > endpoint.x) ? -0.1 : 0.1;
 //        3. get targetpoint vertical distance from triangle right end
         var sidex_target, sidey_target, yborder;
         sidex_target = sortedpoints[0 ].x - targetpoint.x;
 //        get corresponding y position
         sidey_target =  sidex_target * anglealpha;
         yborder = sortedpoints[0 ].y - sidey_target;
-
-        var isclockwise = (slopedir === 1) ? targetpoint.y < yborder : targetpoint.y > yborder;
-        console.log( isclockwise );
+//        cases (up_right, down_right, down_left, up_left
+        console.log( "slopedir", slopedir );
+        switch(slopedir + centerpoint) {
+            case -1.1:
+                console.log( "-1.1. from bottomright to topleft" );
+                isclockwise = targetpoint.y < yborder;
+                break;
+            case -0.9:
+                console.log( "-0.9 from topleft to bottomright" );
+                isclockwise = targetpoint.y > yborder;
+                break;
+            case 0.9:
+                console.log( "0.9 from topright to bottomleft" );
+                isclockwise = targetpoint.y < yborder;
+                break;
+            case 1.1:
+                console.log( "1.1 from bottomleft to topright" );
+                isclockwise = targetpoint.y > yborder;
+                break;
+            default:
+                console.log( "none of the above" );
+        }
 
         return isclockwise;
 
@@ -364,18 +428,20 @@ function drawtarget ( x, y, strokeStyle ) {
 
 };
 
-var firsttargetcoords = {x: 230, y:200};
-
+var firsttargetcoords = {x: 300, y:240};
 drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
 
 // A. First let's do a two point solver
 var newtargets = Leg1Joint1Joint1.twoJointSolver(firsttargetcoords);
 
-//// 1. rotate the parent to the position
-//Leg1Joint1.update({rotation: newtargets.parentortation});
-//
-//// 2. rotate the child to the position
-//Leg1Joint1Joint1.update({rotation: newtargets.endrotation});
+// 1. rotate the parent to the position
+Leg1Joint1.update({rotation: newtargets.parentortation});
+
+// 2. rotate the child to the position
+Leg1Joint1Joint1.update({rotation: newtargets.endrotation});
+
+drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
+
 
 
 //// B. Do the three point solver (endpoint: Leg1Joint1Joint1
