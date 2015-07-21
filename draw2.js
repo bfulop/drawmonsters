@@ -170,19 +170,6 @@ bodypart.endJointSolver = function (posobj) {
 
 bodypart.twoJointSolver = function (posobj) {
 
-//    get rotation direction
-    var clockwise = getRotationDir(
-         {
-             x : this.parentobj.abscoordinates.startx,
-             y : this.parentobj.abscoordinates.starty
-         },
-         {
-             x : this.parentobj.abscoordinates.endx,
-             y : this.parentobj.abscoordinates.endy
-         },
-        posobj
-    );
-
 //    getParentRotation
 
     var dist_parent_target = getDistance(
@@ -234,7 +221,6 @@ bodypart.twoJointSolver = function (posobj) {
         return a - b;
     });
     targetangle = good_solutions[0].rotation;
-//    targetangle =  angle_parent_target - angle_end_target;
 
 
 //    getEndPointRotation
@@ -310,53 +296,6 @@ bodypart.twoJointSolver = function (posobj) {
         targetangle = (distance_opposite / distance_at_right) * Math.sin(angle_at_left * (Math.PI / 180));
         targetangle = Math.asin(targetangle);
         return (targetangle / (Math.PI / 180));
-
-    }
-
-    function getRotationDir (startpoint, endpoint, targetpoint) {
-        var isclockwise;
-//        1. get a normalised triangle
-        var sortedpoints = [startpoint, endpoint ].sort(function(a,b){
-//            largest first
-            return b.x - a.x;
-        });
-//        2. get the base triangle we're comparing too
-        var sidex, sidey, anglealpha, slopedir, centerpoint;
-        sidex = sortedpoints[0 ].x - sortedpoints[1 ].x;
-        sidey = sortedpoints[0 ].y - sortedpoints[1 ].y;
-        anglealpha = sidey / sidex;
-        slopedir = (anglealpha > 0) ? -1 : 1;
-        centerpoint = (startpoint.x > endpoint.x) ? -0.1 : 0.1;
-//        3. get targetpoint vertical distance from triangle right end
-        var sidex_target, sidey_target, yborder;
-        sidex_target = sortedpoints[0 ].x - targetpoint.x;
-//        get corresponding y position
-        sidey_target =  sidex_target * anglealpha;
-        yborder = sortedpoints[0 ].y - sidey_target;
-//        cases (up_right, down_right, down_left, up_left
-        console.log( "slopedir", slopedir );
-        switch(slopedir + centerpoint) {
-            case -1.1:
-                console.log( "-1.1. from bottomright to topleft" );
-                isclockwise = targetpoint.y < yborder;
-                break;
-            case -0.9:
-                console.log( "-0.9 from topleft to bottomright" );
-                isclockwise = targetpoint.y > yborder;
-                break;
-            case 0.9:
-                console.log( "0.9 from topright to bottomleft" );
-                isclockwise = targetpoint.y < yborder;
-                break;
-            case 1.1:
-                console.log( "1.1 from bottomleft to topright" );
-                isclockwise = targetpoint.y > yborder;
-                break;
-            default:
-                console.log( "none of the above" );
-        }
-
-        return isclockwise;
 
     }
 
