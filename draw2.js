@@ -123,20 +123,130 @@ BodyStart.setabsposition({endx: 100, endy: 50, rotation: 45});
 
 
 var Leg1 = Object.create(bodypart);
-Leg1.update({name:"Leg1", length: 100, width: 20, rotation: -10, parentobj:BodyStart});
+Leg1.update({name:"Leg1", length: 120, width: 20, rotation: -60, parentobj:BodyStart});
 
 
 var Leg1Joint1 = Object.create(bodypart);
-Leg1Joint1.update({name:"Leg1Joint1", length: 140, width: 15, rotation: -10, parentobj:Leg1});
+Leg1Joint1.update({name:"Leg1Joint1", length: 150, width: 15, rotation: 60, parentobj:Leg1});
 
 var Leg1Joint1Joint1 = Object.create(bodypart);
-Leg1Joint1Joint1.update({name:"Leg1Joint1Joint1", length: 220, width: 10, rotation: 110, parentobj:Leg1Joint1});
+Leg1Joint1Joint1.update({name:"Leg1Joint1Joint1", length: 100, width: 10, rotation: 20, parentobj:Leg1Joint1});
 
 BodyStart.render();
 ctx.stroke();
 
 
 //Leg1.update({rotation: -50});
+
+////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+//
+//  NEW, BETTER inverse kinematics solver
+//
+////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+
+
+
+bodypart.threeJoints = function ( targetpos ) {
+
+    // A. get distances
+    var de, dt, dj2, dj2t, dratio, S, E, J1, J2, T, r1, r2, r3;
+
+    var pinnedjoint = getPinnedJoint();
+
+    S  = { x : pinnedjoint.abscoordinates.startx, y : pinnedjoint.abscoordinates.starty };
+    E  = { x : this.abscoordinates.endx, y : this.abscoordinates.endy };
+    J1 = { x : this.parentobj.abscoordinates.startx, y : this.parentobj.abscoordinates.starty };
+    J2 = { x : this.parentobj.abscoordinates.endx, y : this.parentobj.abscoordinates.endy };
+    T  = targetpos;
+    r1 = this.parentobj.parentobj.length;
+    r2 = this.parentobj.length;
+    r3 = this.length;
+
+    de     = getDistance( S, E);
+    dt     = getDistance(S, targetpos);
+    dratio = dt / de;
+    dj2    = getDistance(S, J2);
+    dj2t   = dj2 * dratio;
+
+//    B. calculate rotation of grandparent (alpha - gamma, where gamma = angledj2 - angler3)
+    var grandparent_rotation, alpha_S, gamma_S, dj1t, angle_dj2, angle_r3;
+
+    dj1t      = getDistance(J1, targetpos);
+    alpha_S   = getAngleatCorner(r1, dj2t, r2);
+    angle_dj2 = getAngleatCorner(r1, dt, dj1t);
+    angle_r3  = getAngleatCorner(dj2t, dt, r3);
+
+    gamma_S   = angle_dj2 - angle_r3;
+    grandparent_rotation = alpha_S - gamma_S;
+
+//    C. calculate the rotation of the parent
+    var parent_rotation;
+
+    parent_rotation = getAngleatCorner(r2, r1, dj2t);
+
+//    D. calculate the rotation of this
+    var this_rotation, dtj1t;
+
+    dtj1t = Math.pow(r1, 2) + Math.pow(dt, 2) - 2 * r1 * dt * Math.cos((angle_dj2 + grandparent_rotation) * (Math.PI / 180));
+    dtj1t = Math.sqrt(dtj1t);
+
+    this_rotation = getAngleatCorner(r3, r2, dtj1t);
+
+    return {
+        grandparent_rotation : grandparent_rotation,
+        parent_rotation      : parent_rotation,
+        this_rotation        : this_rotation
+    };
+
+
+    function getAngleatCorner (righttoangle, leftoangle, oppositetoangle) {
+        var targetangle;
+        var sortedsides = [ righttoangle, leftoangle, oppositetoangle ].sort(function(a,b){
+            return b - a;
+        });
+
+
+        var largestangle = Math.acos((Math.pow(sortedsides[1], 2) + Math.pow(sortedsides[2], 2) - Math.pow(sortedsides[0], 2)) / (2 * sortedsides[1] * sortedsides[2]));
+
+        if ( oppositetoangle === sortedsides[0] ) {
+            return largestangle / (Math.PI / 180);
+        } else {
+            targetangle = (oppositetoangle / sortedsides[0]) * Math.sin(largestangle);
+            targetangle = Math.asin(targetangle);
+            return (targetangle / (Math.PI/180));
+        }
+    }
+
+    function getDistance ( startpos, endpos ) {
+        var sidex = Math.abs( startpos.x - endpos.x );
+        var sidey = Math.abs( startpos.y - endpos.y );
+        return Math.sqrt( Math.pow( sidex, 2 ) + Math.pow( sidey, 2 ) );
+    }
+
+    function getPinnedJoint () {
+        return Leg1;
+    }
+
+};
+
+var firsttargetcoords = {x: 330, y:280};
+drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
+
+var rotations = Leg1Joint1Joint1.threeJoints(firsttargetcoords);
+
+Leg1Joint1Joint1.update({rotation: 180 - rotations.this_rotation});
+Leg1Joint1.update({rotation: 180 - rotations.parent_rotation});
+Leg1.update({rotation: -60 - rotations.grandparent_rotation});
+
+
+
+
+
+
+
+
 
 ////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
@@ -388,7 +498,6 @@ function drawtarget ( x, y, strokeStyle ) {
 
 };
 
-var firsttargetcoords = {x: 350, y:200};
 drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
 
 //// A. First let's do a two point solver
@@ -408,26 +517,26 @@ drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
 //
 //// 1. Find parents new target position
 //
-var parenttarget = Leg1Joint1Joint1.threeJointSolver(firsttargetcoords);
-drawtarget(parenttarget.x, parenttarget.y, "red");
-////
-////// 2. rotate parent as new two joint example
-var parentnewtarget = Leg1Joint1.twoJointSolver(parenttarget);
-Leg1.update({rotation: parentnewtarget.parentortation});
-Leg1Joint1.update({rotation: parentnewtarget.endrotation});
-////
-
-var endrotation = Leg1Joint1Joint1.endJointSolver(firsttargetcoords);
-Leg1Joint1Joint1.update({rotation: 180 - endrotation});
-
-var parentpoint = {
-        x : Leg1Joint1Joint1.parentobj.abscoordinates.startx,
-    y : Leg1Joint1Joint1.parentobj.abscoordinates.starty
-};
-
-
-drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
-drawtarget(parentpoint.x, parentpoint.y, "pink");
+//var parenttarget = Leg1Joint1Joint1.threeJointSolver(firsttargetcoords);
+//drawtarget(parenttarget.x, parenttarget.y, "red");
+//////
+//////// 2. rotate parent as new two joint example
+//var parentnewtarget = Leg1Joint1.twoJointSolver(parenttarget);
+//Leg1.update({rotation: parentnewtarget.parentortation});
+//Leg1Joint1.update({rotation: parentnewtarget.endrotation});
+//////
+//
+//var endrotation = Leg1Joint1Joint1.endJointSolver(firsttargetcoords);
+//Leg1Joint1Joint1.update({rotation: 180 - endrotation});
+//
+//var parentpoint = {
+//        x : Leg1Joint1Joint1.parentobj.abscoordinates.startx,
+//    y : Leg1Joint1Joint1.parentobj.abscoordinates.starty
+//};
+//
+//
+//drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
+//drawtarget(parentpoint.x, parentpoint.y, "pink");
 
 
 
