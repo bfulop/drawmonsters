@@ -388,7 +388,7 @@ function drawtarget ( x, y, strokeStyle ) {
 
 };
 
-var firsttargetcoords = {x: 410, y:290};
+var firsttargetcoords = {x: 350, y:200};
 drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
 
 //// A. First let's do a two point solver
@@ -423,7 +423,7 @@ Leg1Joint1Joint1.update({rotation: 180 - endrotation});
 var parentpoint = {
         x : Leg1Joint1Joint1.parentobj.abscoordinates.startx,
     y : Leg1Joint1Joint1.parentobj.abscoordinates.starty
-}
+};
 
 
 drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
