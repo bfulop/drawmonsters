@@ -130,7 +130,7 @@ var Leg1Joint1 = Object.create(bodypart);
 Leg1Joint1.update({name:"Leg1Joint1", length: 150, width: 15, rotation: 60, parentobj:Leg1});
 
 var Leg1Joint1Joint1 = Object.create(bodypart);
-Leg1Joint1Joint1.update({name:"Leg1Joint1Joint1", length: 100, width: 10, rotation: 20, parentobj:Leg1Joint1});
+Leg1Joint1Joint1.update({name:"Leg1Joint1Joint1", length: 100, width: 10, rotation: -10, parentobj:Leg1Joint1});
 
 BodyStart.render();
 ctx.stroke();
@@ -195,9 +195,9 @@ bodypart.threeJoints = function ( targetpos ) {
     this_rotation = getAngleatCorner(r3, r2, dtj1t);
 
     return {
-        grandparent_rotation : grandparent_rotation,
-        parent_rotation      : parent_rotation,
-        this_rotation        : this_rotation
+        grandparent_rotation : pinnedjoint.rotation - grandparent_rotation,
+        parent_rotation      : 180 - parent_rotation,
+        this_rotation        : 180 - this_rotation
     };
 
 
@@ -231,17 +231,164 @@ bodypart.threeJoints = function ( targetpos ) {
 
 };
 
-var firsttargetcoords = {x: 330, y:280};
+var firsttargetcoords = {x: 210, y:210};
 drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
 
 var rotations = Leg1Joint1Joint1.threeJoints(firsttargetcoords);
 
-Leg1Joint1Joint1.update({rotation: 180 - rotations.this_rotation});
-Leg1Joint1.update({rotation: 180 - rotations.parent_rotation});
-Leg1.update({rotation: -60 - rotations.grandparent_rotation});
+
+/*
+*
+*
+* Get crossing points of two circles
+*
+*
+*/
+
+// between Leg1Joint1 and Leg1Joint1Joint1
+
+function getCirclesIntersection(pointA,radiusA,pointB,radiusB) {
+    var d1,sortedpoints, leftpoint, rightpoint, alpha1, alpha2, alphatarget1, alphatarget2;
+
+    d1 = getDistance( pointA, pointB );
+    sortedpoints = getLeftPoint(pointA, pointB);
+    leftpoint = sortedpoints.leftpoint;
+    rightpoint = sortedpoints.rightpoint;
+    alpha1 = getAngleatCorner(sortedpoints.leftradius, d1, sortedpoints.rightradius);
+
+//    get alpha2 (compared to vertical)
+    var dx, dy;
+    dx = sortedpoints.rightpoint.x - sortedpoints.leftpoint.x;
+    dy = Math.abs(sortedpoints.rightpoint.y - sortedpoints.leftpoint.y);
+    alpha2 = Math.asin(dx/d1);
+    alpha2 = alpha2 / (Math.PI / 180);
+
+    alphatarget1 = alpha2 - alpha1;
+
+//    calculate the intersect positions
+    var intersect1;
+    intersect1 = getRotatedPoint(sortedpoints.leftpoint, alphatarget1, sortedpoints.leftradius);
+
+    return intersect1;
+
+    function getRotatedPoint (centerpoint, angle, radius) {
+        var dx, dy;
+        dx = Math.sin(angle * (Math.PI / 180) ) * radius;
+        dy = Math.cos(angle * (Math.PI / 180) ) * radius;
+        return {
+            x: centerpoint.x + dx,
+            y: centerpoint.y + dy
+        }
+    }
 
 
+    function getLeftPoint (pointA,pointB) {
+        if(pointA.x < pointB.x) {
+            return {
+                leftpoint: pointA,
+                rightpoint: pointB,
+                leftradius: radiusA,
+                rightradius: radiusB
+            }
+        } else {
+            return {
+                leftpoint: pointB,
+                rightpoint: pointA,
+                leftradius: radiusB,
+                rightradius: radiusA
+            }
+        }
 
+    }
+
+    function getDistance ( startpos, endpos ) {
+        var sidex = Math.abs( startpos.x - endpos.x );
+        var sidey = Math.abs( startpos.y - endpos.y );
+        return Math.sqrt( Math.pow( sidex, 2 ) + Math.pow( sidey, 2 ) );
+    }
+
+    function getAngleatCorner (righttoangle, leftoangle, oppositetoangle) {
+        var targetangle;
+        var sortedsides = [ righttoangle, leftoangle, oppositetoangle ].sort(function(a,b){
+            return b - a;
+        });
+
+
+        var largestangle = Math.acos((Math.pow(sortedsides[1], 2) + Math.pow(sortedsides[2], 2) - Math.pow(sortedsides[0], 2)) / (2 * sortedsides[1] * sortedsides[2]));
+
+        if ( oppositetoangle === sortedsides[0] ) {
+            return largestangle / (Math.PI / 180);
+        } else {
+            targetangle = (oppositetoangle / sortedsides[0]) * Math.sin(largestangle);
+            targetangle = Math.asin(targetangle);
+            return (targetangle / (Math.PI/180));
+        }
+    }
+
+
+}
+
+
+// test the positioning
+
+var intersection = getCirclesIntersection(firsttargetcoords,Leg1Joint1Joint1.length, {
+    x : Leg1Joint1.abscoordinates.startx,
+    y : Leg1Joint1.abscoordinates.starty
+}, Leg1Joint1.length);
+
+console.log( "resultx", intersection.x, "resulty", intersection.y );
+drawtarget(intersection.x, intersection.y, "purple");
+
+
+//Leg1Joint1Joint1.update({rotation: rotations.this_rotation});
+//Leg1Joint1.update({rotation: rotations.parent_rotation});
+//Leg1.update({rotation: rotations.grandparent_rotation});
+
+
+// Let's do an animation
+
+var starting_rotations = {
+    this_rotation : Leg1Joint1Joint1.rotation,
+    parent_rotation : Leg1Joint1.rotation,
+    grandparent_rotation : Leg1.rotation
+};
+
+var rotation_ranges = {
+    this_rotation : rotations.this_rotation - starting_rotations.this_rotation,
+    parent_rotation : rotations.parent_rotation - starting_rotations.parent_rotation,
+    grandparent_rotation : rotations.grandparent_rotation - starting_rotations.grandparent_rotation
+};
+
+var starttime1 = null;
+var elapsedtime1 = 0;
+var animduration1 = 7000;
+
+var this_rotation = starting_rotations.this_rotation;
+var parent_rotation = starting_rotations.parent_rotation;
+var grandparent_rotation = starting_rotations.grandparent_rotation;
+
+function moveanimal1 (timestamp) {
+    if ( !starttime1 ) {
+        starttime1 = timestamp;
+    }
+
+    elapsedtime1 = timestamp - starttime1;
+
+    this_rotation = starting_rotations.this_rotation + cycler((elapsedtime1 % animduration1) / animduration1) * rotation_ranges.this_rotation;
+    Leg1Joint1Joint1.update({rotation: this_rotation});
+
+    parent_rotation = starting_rotations.parent_rotation + cycler((elapsedtime1 % animduration1) / animduration1) * rotation_ranges.parent_rotation;
+    Leg1Joint1.update({rotation: parent_rotation});
+
+    grandparent_rotation = starting_rotations.grandparent_rotation + cycler((elapsedtime1 % animduration1) / animduration1) * rotation_ranges.grandparent_rotation;
+    Leg1.update({rotation: grandparent_rotation});
+
+    drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
+
+    window.requestAnimationFrame(moveanimal1);
+}
+
+//moveanimal1();
 
 
 
