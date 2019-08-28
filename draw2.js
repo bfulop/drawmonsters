@@ -123,14 +123,17 @@ BodyStart.setabsposition({endx: 100, endy: 50, rotation: 45});
 
 
 var Leg1 = Object.create(bodypart);
-Leg1.update({name:"Leg1", length: 120, width: 20, rotation: -60, parentobj:BodyStart});
+Leg1.update({name:"Leg1", length: 90, width: 20, rotation: -60, parentobj:BodyStart});
 
 
 var Leg1Joint1 = Object.create(bodypart);
-Leg1Joint1.update({name:"Leg1Joint1", length: 150, width: 15, rotation: 60, parentobj:Leg1});
+Leg1Joint1.update({name:"Leg1Joint1", length: 100, width: 15, rotation: 60, parentobj:Leg1});
 
 var Leg1Joint1Joint1 = Object.create(bodypart);
-Leg1Joint1Joint1.update({name:"Leg1Joint1Joint1", length: 100, width: 10, rotation: -10, parentobj:Leg1Joint1});
+Leg1Joint1Joint1.update({name:"Leg1Joint1Joint1", length: 80, width: 10, rotation: -10, parentobj:Leg1Joint1});
+
+var Leg1Joint1Joint1Joint1 = Object.create(bodypart);
+Leg1Joint1Joint1Joint1.update({name:"Leg1Joint1Joint1", length: 60, width: 6, rotation: 30, parentobj:Leg1Joint1Joint1});
 
 BodyStart.render();
 ctx.stroke();
@@ -231,11 +234,8 @@ bodypart.threeJoints = function ( targetpos ) {
 
 };
 
-var firsttargetcoords = {x: 210, y:210};
+var firsttargetcoords = {x: 290, y:240};
 drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
-
-var rotations = Leg1Joint1Joint1.threeJoints(firsttargetcoords);
-
 
 /*
 *
@@ -331,21 +331,15 @@ function getCirclesIntersection(pointA,radiusA,pointB,radiusB) {
 
 // test the positioning
 
-var intersection = getCirclesIntersection(firsttargetcoords,Leg1Joint1Joint1.length, {
-    x : Leg1Joint1.abscoordinates.startx,
-    y : Leg1Joint1.abscoordinates.starty
-}, Leg1Joint1.length);
+var intersection = getCirclesIntersection(firsttargetcoords,Leg1Joint1Joint1Joint1.length, {
+    x : Leg1Joint1Joint1.abscoordinates.startx,
+    y : Leg1Joint1Joint1.abscoordinates.starty
+}, Leg1Joint1Joint1.length);
+
+var rotations = Leg1Joint1Joint1.threeJoints(intersection);
 
 console.log( "resultx", intersection.x, "resulty", intersection.y );
 drawtarget(intersection.x, intersection.y, "purple");
-
-
-//Leg1Joint1Joint1.update({rotation: rotations.this_rotation});
-//Leg1Joint1.update({rotation: rotations.parent_rotation});
-//Leg1.update({rotation: rotations.grandparent_rotation});
-
-
-// Let's do an animation
 
 var starting_rotations = {
     this_rotation : Leg1Joint1Joint1.rotation,
@@ -360,12 +354,28 @@ var rotation_ranges = {
 };
 
 var starttime1 = null;
+
 var elapsedtime1 = 0;
 var animduration1 = 7000;
+
+//Leg1Joint1Joint1.update({rotation: rotations.this_rotation});
+//Leg1Joint1.update({rotation: rotations.parent_rotation});
+//Leg1.update({rotation: rotations.grandparent_rotation});
+
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+
+// Let's do an animation
 
 var this_rotation = starting_rotations.this_rotation;
 var parent_rotation = starting_rotations.parent_rotation;
 var grandparent_rotation = starting_rotations.grandparent_rotation;
+
+var continue_animation = false;
 
 function moveanimal1 (timestamp) {
     if ( !starttime1 ) {
@@ -385,10 +395,12 @@ function moveanimal1 (timestamp) {
 
     drawtarget(firsttargetcoords.x, firsttargetcoords.y, "green");
 
-    window.requestAnimationFrame(moveanimal1);
+    if (continue_animation) {
+        window.requestAnimationFrame(moveanimal1);
+    }
 }
 
-//moveanimal1();
+moveanimal1();
 
 
 
